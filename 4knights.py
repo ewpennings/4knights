@@ -70,6 +70,8 @@ class Node:
                 elif c == '\n':
                     self.board.append(row)
                     row = []
+            if len(row):
+              self.board.append(row)
             result = True
         except FileNotFoundError as e:
             print(e)
