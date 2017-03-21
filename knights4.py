@@ -1,5 +1,4 @@
 from enum import Enum
-from copy import deepcopy
 from math import inf
 from queue import PriorityQueue
 from itertools import permutations
@@ -33,7 +32,7 @@ class Node:
         return self.f_score < other.f_score
 
     def __hash__(self):
-        return hash(self.__repr__())
+        return hash(self.board)
 
     def __repr__(self):
         rpr = ""
@@ -56,6 +55,7 @@ class Node:
         try:
             fh = open(filename)
             data = fh.read()
+            grid = []
             row = []
 
             for c in data:
@@ -68,10 +68,11 @@ class Node:
                 elif c == 'W':
                     row.append(Square.WHITE)
                 elif c == '\n':
-                    self.board.append(row)
+                    grid.append(tuple(row))
                     row = []
             if len(row):
-              self.board.append(row)
+                grid.append(tuple(row))
+            self.board = tuple(grid)
             result = True
         except FileNotFoundError as e:
             print(e)
@@ -93,16 +94,17 @@ class Node:
     # Create a goal Node ( a board where all pieces have switched color )
     def goal(self):
         goal = Node()
-        goal.board = deepcopy(self.board)
-        height = len(goal.board)
+        grid = [list(row) for row in self.board]
+        height = len(self.board)
         for y in range(0, height):
-            width = len(goal.board[y])
+            width = len(self.board[y])
             for x in range(0, width):
                 s = self.board[y][x]
                 if s is Square.BLACK:
-                    goal.board[y][x] = Square.WHITE
+                    grid[y][x] = Square.WHITE
                 elif s is Square.WHITE:
-                    goal.board[y][x] = Square.BLACK
+                    grid[y][x] = Square.BLACK
+        goal.board = tuple([tuple(row) for row in grid])
         return goal
 
     # Return a list of neighbours for this Node
@@ -116,9 +118,10 @@ class Node:
                         pt = self.square_at(x + p[0], y + p[1])
                         if pt is Square.EMPTY:
                             neighbour = Node()
-                            neighbour.board = deepcopy(self.board)
-                            neighbour.board[y + p[1]][x + p[0]] = deepcopy(t)
-                            neighbour.board[y][x] = deepcopy(pt)
+                            grid = [list(row) for row in self.board]
+                            grid[y + p[1]][x + p[0]] = t
+                            grid[y][x] = pt
+                            neighbour.board = tuple([tuple(row) for row in grid])
                             if neighbour not in neighbours:
                                 neighbours.append(neighbour)
         return neighbours
@@ -164,6 +167,7 @@ def a_star(start: Node, goal: Node):
         current = open_set.get()
 
         if current == goal:
+            print("Number of nodes in closed set: {0}".format(len(closed_set)))
             return reconstruct_path(current)
 
         closed_set.add(current)
@@ -176,7 +180,13 @@ def a_star(start: Node, goal: Node):
 
             if neighbour not in open_set.queue:
                 open_set.put(neighbour)
-            elif g_score >= neighbour.g_score:
+            else:
+                for n in open_set.queue:
+                    if n == neighbour:
+                        neighbour = n
+                        break
+
+            if g_score >= neighbour.g_score:
                 continue
 
             neighbour.came_from = current
